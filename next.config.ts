@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
   basePath,
   trailingSlash: true,
   images: { unoptimized: true },
+  // на exFAT macOS пишет рядом файлы ._*, и кеш Turbopack на диске ломается
+  experimental: { turbopackFileSystemCacheForDev: false },
   turbopack: {
     rules: {
       "*.css": {

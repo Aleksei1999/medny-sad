@@ -110,6 +110,8 @@ export function FlightHero() {
       draw(current.current);
     };
     resize();
+    // backdrop-filter с url() умеет только Chromium, у него одного есть userAgentData
+    if ('userAgentData' in navigator) document.documentElement.dataset.refract = '';
     window.addEventListener('resize', resize);
     return () => window.removeEventListener('resize', resize);
   }, []);
@@ -169,8 +171,11 @@ export function FlightHero() {
           <h2 className="display mt-4 text-[11vw] leading-[0.9] md:text-[6vw]">Вы дома</h2>
         </motion.div>
 
+        <GlassFilter />
         {view.w > 0 &&
-          CALLOUTS.map((c) => <CalloutMark key={c.title} callout={c} view={view} progress={scrollYProgress} />)}
+          CALLOUTS.map((c) => (
+            <CalloutMark key={c.title} callout={c} view={view} progress={scrollYProgress} />
+          ))}
       </div>
     </section>
   );
@@ -214,19 +219,44 @@ function CalloutMark({
     <motion.div style={{ opacity: narrow ? fade : 1 }} className="pointer-events-none absolute inset-0">
       <motion.span
         style={{ opacity: dot, left: x, top: y }}
-        className="absolute -ml-[7px] -mt-[7px] block h-[14px] w-[14px] rounded-full border border-cream bg-copper shadow-[0_0_0_6px_rgba(200,135,90,0.25)]"
+        className="absolute -ml-[4px] -mt-[4px] block h-2 w-2 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.7)]"
       />
       <motion.span
-        style={{ scaleY: line, left: x, top: y - lineH, height: lineH }}
-        className="absolute block w-px origin-bottom bg-cream/80"
+        style={{ scaleY: line, left: x, top: y - lineH, height: lineH - 4 }}
+        className="absolute block w-px origin-bottom bg-white/85"
       />
       <motion.div
         style={{ opacity: card, y: cardY, left, bottom: view.h - (y - lineH), width: cardW }}
-        className="absolute rounded-2xl border border-cream/15 bg-night/55 p-5 backdrop-blur-md"
+        className="glass absolute rounded-[22px] p-5"
       >
-        <p className="eyebrow text-copper">{callout.title}</p>
-        <p className="mt-3 text-[14px] font-light leading-relaxed text-cream/90">{callout.text}</p>
+        <p className="eyebrow text-white">{callout.title}</p>
+        <p className="mt-3 text-[14px] font-light leading-relaxed text-white/85">{callout.text}</p>
       </motion.div>
     </motion.div>
+  );
+}
+
+// карта смещения: нейтральный серый в центре и градиенты к краям — края стекла преломляют фон, как линза
+const REFRACT_MAP = `data:image/svg+xml;utf8,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+    <defs>
+      <linearGradient id="r" x1="0" x2="1"><stop offset="0" stop-color="#f00"/><stop offset="1" stop-color="#000"/></linearGradient>
+      <linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#0f0"/><stop offset="1" stop-color="#000"/></linearGradient>
+      <filter id="b"><feGaussianBlur stdDeviation="9"/></filter>
+    </defs>
+    <rect width="200" height="200" fill="url(#r)"/>
+    <rect width="200" height="200" fill="url(#g)" style="mix-blend-mode:screen"/>
+    <rect x="22" y="22" width="156" height="156" rx="26" fill="#808080" filter="url(#b)"/>
+  </svg>`,
+)}`;
+
+function GlassFilter() {
+  return (
+    <svg width="0" height="0" className="absolute" aria-hidden>
+      <filter id="glass-refract" x="0" y="0" width="100%" height="100%" colorInterpolationFilters="sRGB">
+        <feImage href={REFRACT_MAP} x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" result="map" />
+        <feDisplacementMap in="SourceGraphic" in2="map" scale="80" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </svg>
   );
 }
