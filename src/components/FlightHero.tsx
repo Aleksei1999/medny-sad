@@ -26,7 +26,7 @@ const ASPECT = 16 / 9;
 const TABLE_FRAME = CLIPS[0].frames + CLIPS[1].frames - 1;
 const TABLE_END = 0.5;
 const CHAIR_START = 0.7;
-const CHAIR_END = 0.88;
+const CHAIR_END = 0.78;
 const FLIGHT_END = (TABLE_END * (CLIPS[0].frames - 1)) / TABLE_FRAME;
 
 type Callout = {
@@ -91,9 +91,9 @@ export function FlightHero() {
   const homeY = useTransform(scrollYProgress, [FLIGHT_END - 0.08, FLIGHT_END - 0.02], [40, 0]);
 
   const calloutsOpacity = useTransform(scrollYProgress, [0.67, 0.7], [1, 0]);
-  // на макрокадре обивки
-  const fabricText = useTransform(scrollYProgress, [0.88, 0.95], [0, 1]);
-  const fabricTextY = useTransform(scrollYProgress, [0.88, 0.95], [40, 0]);
+  // на макрокадре обивки; последние ~10% скролла на кадр наезжает блок «О проекте»
+  const fabricText = useTransform(scrollYProgress, [0.78, 0.84], [0, 1]);
+  const fabricTextY = useTransform(scrollYProgress, [0.78, 0.84], [40, 0]);
 
   const draw = (index: number) => {
     const c = canvas.current;
@@ -145,7 +145,7 @@ export function FlightHero() {
   });
 
   return (
-    <section id="top" ref={section} className="relative h-[1000vh]">
+    <section id="top" ref={section} className="relative h-[1100vh]">
       <div className="sticky top-0 h-svh overflow-hidden">
         <canvas ref={canvas} className="absolute inset-0 h-full w-full" />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-night/80 via-night/10 to-night/40" />

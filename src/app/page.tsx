@@ -1,3 +1,4 @@
+import { About } from '@/components/About';
 import { FlightHero } from '@/components/FlightHero';
 import { Header } from '@/components/Header';
 import { SmoothScroll } from '@/components/SmoothScroll';
@@ -8,6 +9,7 @@ export default function Home() {
       <SmoothScroll />
       <Header />
       <FlightHero />
+      <About />
     </main>
   );
 }
