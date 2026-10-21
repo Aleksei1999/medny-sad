@@ -1,27 +1,78 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { motion, useMotionValueEvent, useScroll, useTransform } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+import {
+  type MotionValue,
+  motion,
+  useMotionValueEvent,
+  useScroll,
+  useTransform,
+} from 'framer-motion';
 
-const FRAMES = 120;
 const base = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-const frameSrc = (i: number) => `${base}/flight/${String(i).padStart(3, '0')}.webp`;
+// ролики идут встык: пролёт в квартиру, затем проезд к столу
+const CLIPS = [
+  { dir: 'flight', frames: 120 },
+  { dir: 'table', frames: 120 },
+];
+const FRAMES = CLIPS.reduce((n, c) => n + c.frames, 0);
+const SOURCES = CLIPS.flatMap((c) =>
+  Array.from({ length: c.frames }, (_, i) => `${base}/${c.dir}/${String(i).padStart(3, '0')}.webp`),
+);
+const ASPECT = 16 / 9;
+// доля скролла, за которую проигрываются все кадры; дальше камера стоит у стола
+const PLAY_END = 0.72;
+const FLIGHT_END = (PLAY_END * (CLIPS[0].frames - 1)) / (FRAMES - 1);
+
+type Callout = {
+  title: string;
+  text: string;
+  // точка на последнем кадре, в долях ширины и высоты кадра
+  at: { desktop: [number, number]; mobile: [number, number] };
+  // в какую сторону от линии стоит подпись
+  side: 'left' | 'right';
+  range: [number, number];
+  // на телефоне две подписи не помещаются рядом: эта уходит, когда появляется следующая
+  narrowHideAt?: number;
+};
+
+const CALLOUTS: Callout[] = [
+  {
+    title: 'Обеденный стол',
+    text: 'Столешница из тёмного мрамора, основание из массива ореха. Диаметр 160 см, на шесть персон.',
+    at: { desktop: [0.625, 0.655], mobile: [0.585, 0.65] },
+    side: 'right',
+    range: [0.74, 0.82],
+    narrowHideAt: 0.83,
+  },
+  {
+    title: 'Стул Velour',
+    text: 'Велюр цвета шампань, каркас из массива ясеня в графитовом тоне. Мягкая спинка-ракушка.',
+    at: { desktop: [0.12, 0.645], mobile: [0.42, 0.8] },
+    side: 'left',
+    range: [0.83, 0.91],
+  },
+];
 
 export function FlightHero() {
   const section = useRef<HTMLElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const images = useRef<HTMLImageElement[]>([]);
   const current = useRef(0);
+  const [view, setView] = useState({ w: 0, h: 0 });
 
   const { scrollYProgress } = useScroll({ target: section, offset: ['start start', 'end end'] });
-  // последние 12% скролла камера уже в комнате и стоит
-  const frame = useTransform(scrollYProgress, [0, 0.88], [0, FRAMES - 1], { clamp: true });
+  const frame = useTransform(scrollYProgress, [0, PLAY_END], [0, FRAMES - 1], { clamp: true });
 
-  const introOpacity = useTransform(scrollYProgress, [0, 0.18], [1, 0]);
-  const introY = useTransform(scrollYProgress, [0, 0.18], [0, -60]);
-  const hintOpacity = useTransform(scrollYProgress, [0, 0.05], [1, 0]);
-  const outroOpacity = useTransform(scrollYProgress, [0.8, 0.92], [0, 1]);
-  const outroY = useTransform(scrollYProgress, [0.8, 0.92], [40, 0]);
+  const introOpacity = useTransform(scrollYProgress, [0, 0.1], [1, 0]);
+  const introY = useTransform(scrollYProgress, [0, 0.1], [0, -60]);
+  const hintOpacity = useTransform(scrollYProgress, [0, 0.03], [1, 0]);
+  const homeOpacity = useTransform(
+    scrollYProgress,
+    [FLIGHT_END - 0.08, FLIGHT_END - 0.02, FLIGHT_END + 0.05, FLIGHT_END + 0.1],
+    [0, 1, 1, 0],
+  );
+  const homeY = useTransform(scrollYProgress, [FLIGHT_END - 0.08, FLIGHT_END - 0.02], [40, 0]);
 
   const draw = (index: number) => {
     const c = canvas.current;
@@ -39,10 +90,10 @@ export function FlightHero() {
   };
 
   useEffect(() => {
-    images.current = Array.from({ length: FRAMES }, (_, i) => {
+    images.current = SOURCES.map((src, i) => {
       const img = new Image();
       img.decoding = 'async';
-      img.src = frameSrc(i);
+      img.src = src;
       img.onload = () => {
         if (i <= current.current) draw(current.current);
       };
@@ -55,6 +106,7 @@ export function FlightHero() {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       c.width = Math.round(c.clientWidth * dpr);
       c.height = Math.round(c.clientHeight * dpr);
+      setView({ w: c.clientWidth, h: c.clientHeight });
       draw(current.current);
     };
     resize();
@@ -70,7 +122,7 @@ export function FlightHero() {
   });
 
   return (
-    <section id="top" ref={section} className="relative h-[480vh]">
+    <section id="top" ref={section} className="relative h-[720vh]">
       <div className="sticky top-0 h-svh overflow-hidden">
         <canvas ref={canvas} className="absolute inset-0 h-full w-full" />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-night/80 via-night/10 to-night/40" />
@@ -110,13 +162,71 @@ export function FlightHero() {
         </motion.div>
 
         <motion.div
-          style={{ opacity: outroOpacity, y: outroY }}
+          style={{ opacity: homeOpacity, y: homeY }}
           className="pointer-events-none absolute inset-x-0 bottom-[12vh] mx-auto max-w-[1600px] px-4 text-center md:px-10"
         >
           <p className="eyebrow text-copper">Квартиры с видом на реку</p>
           <h2 className="display mt-4 text-[11vw] leading-[0.9] md:text-[6vw]">Вы дома</h2>
         </motion.div>
+
+        {view.w > 0 &&
+          CALLOUTS.map((c) => <CalloutMark key={c.title} callout={c} view={view} progress={scrollYProgress} />)}
       </div>
     </section>
+  );
+}
+
+function CalloutMark({
+  callout,
+  view,
+  progress,
+}: {
+  callout: Callout;
+  view: { w: number; h: number };
+  progress: MotionValue<number>;
+}) {
+  const [a, b] = callout.range;
+  const span = b - a;
+  const dot = useTransform(progress, [a, a + span * 0.15], [0, 1]);
+  const line = useTransform(progress, [a + span * 0.1, a + span * 0.55], [0, 1]);
+  const card = useTransform(progress, [a + span * 0.5, b], [0, 1]);
+  const cardY = useTransform(progress, [a + span * 0.5, b], [14, 0]);
+  const hideAt = callout.narrowHideAt;
+  const fade = useTransform(progress, (v) =>
+    hideAt === undefined ? 1 : Math.min(1, Math.max(0, 1 - (v - hideAt) / 0.03)),
+  );
+
+  // кадр вписан по cover: пересчитываем точку из долей кадра в пиксели экрана
+  const narrow = view.w < 768;
+  const drawW = Math.max(view.w, view.h * ASPECT);
+  const drawH = drawW / ASPECT;
+  const [fx, fy] = narrow ? callout.at.mobile : callout.at.desktop;
+  const x = (view.w - drawW) / 2 + fx * drawW;
+  const y = (view.h - drawH) / 2 + fy * drawH;
+  const lineH = Math.min(view.h * 0.26, 240);
+  const cardW = Math.min(300, view.w - 32);
+  const left =
+    callout.side === 'right'
+      ? Math.min(Math.max(x, 16), view.w - cardW - 16)
+      : Math.min(Math.max(x - cardW, 16), view.w - cardW - 16);
+
+  return (
+    <motion.div style={{ opacity: narrow ? fade : 1 }} className="pointer-events-none absolute inset-0">
+      <motion.span
+        style={{ opacity: dot, left: x, top: y }}
+        className="absolute -ml-[7px] -mt-[7px] block h-[14px] w-[14px] rounded-full border border-cream bg-copper shadow-[0_0_0_6px_rgba(200,135,90,0.25)]"
+      />
+      <motion.span
+        style={{ scaleY: line, left: x, top: y - lineH, height: lineH }}
+        className="absolute block w-px origin-bottom bg-cream/80"
+      />
+      <motion.div
+        style={{ opacity: card, y: cardY, left, bottom: view.h - (y - lineH), width: cardW }}
+        className="absolute rounded-2xl border border-cream/15 bg-night/55 p-5 backdrop-blur-md"
+      >
+        <p className="eyebrow text-copper">{callout.title}</p>
+        <p className="mt-3 text-[14px] font-light leading-relaxed text-cream/90">{callout.text}</p>
+      </motion.div>
+    </motion.div>
   );
 }
