@@ -154,11 +154,7 @@ export function FlightHero() {
           style={{ opacity: introOpacity, y: introY }}
           className="absolute inset-x-0 bottom-[14vh] mx-auto max-w-[1600px] px-4 md:px-10"
         >
-          <p className="eyebrow inline-flex items-center gap-3 rounded-full border border-copper/60 bg-night/40 px-4 py-2 text-copper backdrop-blur-sm">
-            <span className="h-1.5 w-1.5 rounded-full bg-copper" />
-            Сдача в 2027 году
-          </p>
-          <h1 className="display mt-5 text-[17vw] leading-[0.86] md:text-[9.5vw]">
+                    <h1 className="display text-[17vw] leading-[0.86] md:text-[9.5vw]">
             Медный
             <br />
             сад
@@ -166,7 +162,7 @@ export function FlightHero() {
           <div className="mt-8 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <p className="max-w-[460px] text-[15px] font-light leading-relaxed text-cream/85 md:text-base">
               Жилой комплекс на берегу реки. Башни-лепестки в медных фасадах, сады на террасах и закаты
-              в панорамных окнах. Ключи — в 2027 году.
+              в панорамных окнах.
             </p>
             <a
               href="#flats"

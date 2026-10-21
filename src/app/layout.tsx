@@ -15,8 +15,8 @@ const sans = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: 'ЖК «Медный сад» — сдача в 2027 году',
-  description: 'Жилой комплекс «Медный сад» на берегу реки. Сдача в 2027 году.',
+  title: 'ЖК «Медный сад»',
+  description: 'Жилой комплекс «Медный сад» на берегу реки.',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
