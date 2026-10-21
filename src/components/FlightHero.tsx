@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { motion, useMotionValueEvent, useScroll, useTransform } from 'framer-motion';
 
-const FRAMES = 97;
+const FRAMES = 120;
 const base = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const frameSrc = (i: number) => `${base}/flight/${String(i).padStart(3, '0')}.webp`;
 
