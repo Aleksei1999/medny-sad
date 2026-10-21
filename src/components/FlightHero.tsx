@@ -236,26 +236,62 @@ function CalloutMark({
   );
 }
 
-// карта смещения: нейтральный серый в центре и градиенты к краям — края стекла преломляют фон, как линза
-const REFRACT_MAP = `data:image/svg+xml;utf8,${encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
-    <defs>
-      <linearGradient id="r" x1="0" x2="1"><stop offset="0" stop-color="#f00"/><stop offset="1" stop-color="#000"/></linearGradient>
-      <linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#0f0"/><stop offset="1" stop-color="#000"/></linearGradient>
-      <filter id="b"><feGaussianBlur stdDeviation="9"/></filter>
-    </defs>
-    <rect width="200" height="200" fill="url(#r)"/>
-    <rect width="200" height="200" fill="url(#g)" style="mix-blend-mode:screen"/>
-    <rect x="22" y="22" width="156" height="156" rx="26" fill="#808080" filter="url(#b)"/>
-  </svg>`,
-)}`;
+// карта смещения: в центре нейтральный серый (стекло не увеличивает), у самого края резкий перепад —
+// там фон загибается, как в толстом стекле. Каналы R/G/B смещаем чуть по-разному — радужная кромка
+const RIM = 0.12;
+// две карты складываем в фильтре: mix-blend-mode внутри feImage браузер не применяет
+const rimMap = (axis: 'x' | 'y', rim: number) => {
+  const [hi, mid] = axis === 'x' ? ['#ff0000', '#800000'] : ['#00ff00', '#008000'];
+  const dir = axis === 'x' ? 'x1="0" x2="1" y1="0" y2="0"' : 'x1="0" x2="0" y1="0" y2="1"';
+  return `data:image/svg+xml;utf8,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+      <defs><linearGradient id="a" ${dir}>
+        <stop offset="0" stop-color="${hi}"/><stop offset="${rim}" stop-color="${mid}"/>
+        <stop offset="${1 - rim}" stop-color="${mid}"/><stop offset="1" stop-color="#000000"/>
+      </linearGradient></defs>
+      <rect width="400" height="400" fill="url(#a)"/>
+    </svg>`,
+  )}`;
+};
+const MAP_X = rimMap('x', RIM);
+const MAP_Y = rimMap('y', RIM * 2);
+
+const CHANNELS = [
+  { id: 'r', scale: -0.3, matrix: '1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0' },
+  { id: 'g', scale: -0.31, matrix: '0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0' },
+  { id: 'b', scale: -0.32, matrix: '0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0' },
+];
 
 function GlassFilter() {
   return (
     <svg width="0" height="0" className="absolute" aria-hidden>
-      <filter id="glass-refract" x="0" y="0" width="100%" height="100%" colorInterpolationFilters="sRGB">
-        <feImage href={REFRACT_MAP} x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" result="map" />
-        <feDisplacementMap in="SourceGraphic" in2="map" scale="80" xChannelSelector="R" yChannelSelector="G" />
+      {/* в долях плашки: иначе для backdrop-filter проценты считаются от этого пустого svg */}
+      <filter
+        id="glass-refract"
+        x="0"
+        y="0"
+        width="1"
+        height="1"
+        primitiveUnits="objectBoundingBox"
+        colorInterpolationFilters="sRGB"
+      >
+        <feImage href={MAP_X} x="0" y="0" width="1" height="1" preserveAspectRatio="none" result="mx" />
+        <feImage href={MAP_Y} x="0" y="0" width="1" height="1" preserveAspectRatio="none" result="my" />
+        <feComposite in="mx" in2="my" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="map" />
+        {CHANNELS.map((c) => [
+          <feDisplacementMap
+            key={`d${c.id}`}
+            in="SourceGraphic"
+            in2="map"
+            scale={c.scale}
+            xChannelSelector="R"
+            yChannelSelector="G"
+            result={`d${c.id}`}
+          />,
+          <feColorMatrix key={`m${c.id}`} in={`d${c.id}`} type="matrix" values={c.matrix} result={c.id} />,
+        ])}
+        <feBlend in="r" in2="g" mode="screen" result="rg" />
+        <feBlend in="rg" in2="b" mode="screen" />
       </filter>
     </svg>
   );

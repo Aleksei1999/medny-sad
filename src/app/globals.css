@@ -55,5 +55,5 @@ body {
 }
 
 [data-refract] .glass {
-  backdrop-filter: url(#glass-refract) blur(1.5px) saturate(1.6) brightness(1.08);
+  backdrop-filter: url(#glass-refract) blur(0.6px) saturate(1.5) brightness(1.04);
 }
