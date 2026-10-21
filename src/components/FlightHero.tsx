@@ -10,19 +10,24 @@ import {
 } from 'framer-motion';
 
 const base = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-// ролики идут встык: пролёт в квартиру, затем проезд к столу
+// ролики идут встык: пролёт в квартиру, проезд к столу, наезд камеры на обивку стула
 const CLIPS = [
   { dir: 'flight', frames: 120 },
   { dir: 'table', frames: 120 },
+  { dir: 'chair', frames: 120 },
 ];
 const FRAMES = CLIPS.reduce((n, c) => n + c.frames, 0);
 const SOURCES = CLIPS.flatMap((c) =>
   Array.from({ length: c.frames }, (_, i) => `${base}/${c.dir}/${String(i).padStart(3, '0')}.webp`),
 );
 const ASPECT = 16 / 9;
-// доля скролла, за которую проигрываются все кадры; дальше камера стоит у стола
-const PLAY_END = 0.72;
-const FLIGHT_END = (PLAY_END * (CLIPS[0].frames - 1)) / (FRAMES - 1);
+// пролёт и проезд к столу идут до TABLE_END, потом камера стоит, пока открываются выноски,
+// и с CHAIR_START едет к стулу
+const TABLE_FRAME = CLIPS[0].frames + CLIPS[1].frames - 1;
+const TABLE_END = 0.5;
+const CHAIR_START = 0.7;
+const CHAIR_END = 0.88;
+const FLIGHT_END = (TABLE_END * (CLIPS[0].frames - 1)) / TABLE_FRAME;
 
 type Callout = {
   title: string;
@@ -42,16 +47,22 @@ const CALLOUTS: Callout[] = [
     text: 'Столешница из тёмного мрамора, основание из массива ореха. Диаметр 160 см, на шесть персон.',
     at: { desktop: [0.625, 0.655], mobile: [0.585, 0.65] },
     side: 'right',
-    range: [0.74, 0.82],
-    narrowHideAt: 0.83,
+    range: [0.52, 0.58],
+    narrowHideAt: 0.59,
   },
   {
     title: 'Стул Velour',
     text: 'Велюр цвета шампань, каркас из массива ясеня в графитовом тоне. Мягкая спинка-ракушка.',
     at: { desktop: [0.12, 0.645], mobile: [0.42, 0.8] },
     side: 'left',
-    range: [0.83, 0.91],
+    range: [0.59, 0.65],
   },
+];
+
+const FABRIC_SPECS = [
+  ['Состав', '70% шерсть, 30% полиамид'],
+  ['Износостойкость', '60 000 циклов Мартиндейла'],
+  ['Уход', 'Сухая чистка, пятновыводитель'],
 ];
 
 export function FlightHero() {
@@ -62,10 +73,15 @@ export function FlightHero() {
   const [view, setView] = useState({ w: 0, h: 0 });
 
   const { scrollYProgress } = useScroll({ target: section, offset: ['start start', 'end end'] });
-  const frame = useTransform(scrollYProgress, [0, PLAY_END], [0, FRAMES - 1], { clamp: true });
+  const frame = useTransform(
+    scrollYProgress,
+    [0, TABLE_END, CHAIR_START, CHAIR_END],
+    [0, TABLE_FRAME, TABLE_FRAME, FRAMES - 1],
+    { clamp: true },
+  );
 
-  const introOpacity = useTransform(scrollYProgress, [0, 0.1], [1, 0]);
-  const introY = useTransform(scrollYProgress, [0, 0.1], [0, -60]);
+  const introOpacity = useTransform(scrollYProgress, [0, 0.08], [1, 0]);
+  const introY = useTransform(scrollYProgress, [0, 0.08], [0, -60]);
   const hintOpacity = useTransform(scrollYProgress, [0, 0.03], [1, 0]);
   const homeOpacity = useTransform(
     scrollYProgress,
@@ -73,6 +89,11 @@ export function FlightHero() {
     [0, 1, 1, 0],
   );
   const homeY = useTransform(scrollYProgress, [FLIGHT_END - 0.08, FLIGHT_END - 0.02], [40, 0]);
+
+  const calloutsOpacity = useTransform(scrollYProgress, [0.67, 0.7], [1, 0]);
+  // на макрокадре обивки
+  const fabricText = useTransform(scrollYProgress, [0.88, 0.95], [0, 1]);
+  const fabricTextY = useTransform(scrollYProgress, [0.88, 0.95], [40, 0]);
 
   const draw = (index: number) => {
     const c = canvas.current;
@@ -124,7 +145,7 @@ export function FlightHero() {
   });
 
   return (
-    <section id="top" ref={section} className="relative h-[720vh]">
+    <section id="top" ref={section} className="relative h-[1000vh]">
       <div className="sticky top-0 h-svh overflow-hidden">
         <canvas ref={canvas} className="absolute inset-0 h-full w-full" />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-night/80 via-night/10 to-night/40" />
@@ -172,10 +193,38 @@ export function FlightHero() {
         </motion.div>
 
         <GlassFilter />
-        {view.w > 0 &&
-          CALLOUTS.map((c) => (
-            <CalloutMark key={c.title} callout={c} view={view} progress={scrollYProgress} />
-          ))}
+        <motion.div style={{ opacity: calloutsOpacity }} className="pointer-events-none absolute inset-0">
+          {view.w > 0 &&
+            CALLOUTS.map((c) => (
+              <CalloutMark key={c.title} callout={c} view={view} progress={scrollYProgress} />
+            ))}
+        </motion.div>
+
+        <motion.div style={{ opacity: fabricText }} className="pointer-events-none absolute inset-0">
+          <div className="absolute inset-0 bg-gradient-to-t from-night/90 via-night/30 to-transparent md:bg-gradient-to-r md:from-night/85 md:via-night/35" />
+          <div className="absolute inset-0 mx-auto flex max-w-[1600px] items-end px-4 pb-[8vh] md:items-center md:px-10 md:pb-0">
+            <motion.div style={{ y: fabricTextY }} className="max-w-[620px]">
+              <p className="eyebrow text-white/70">Обивка стульев</p>
+              <h2 className="display mt-5 text-[13vw] leading-[0.92] text-white md:text-[3.6vw]">
+                Букле, которое
+                <br />
+                хочется потрогать
+              </h2>
+              <p className="mt-6 text-[15px] font-light leading-relaxed text-white/85 md:text-base">
+                Плотная петельная ткань тёплого карамельного оттенка. Не скатывается, не боится когтей
+                и годами держит форму каналов на спинке.
+              </p>
+              <dl className="mt-8 divide-y divide-white/15 border-y border-white/15 text-[14px]">
+                {FABRIC_SPECS.map(([k, v]) => (
+                  <div key={k} className="flex justify-between gap-6 py-3">
+                    <dt className="text-white/60">{k}</dt>
+                    <dd className="text-right text-white">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </motion.div>
+          </div>
+        </motion.div>
       </div>
     </section>
   );
