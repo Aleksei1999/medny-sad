@@ -1,0 +1,40 @@
+@import 'tailwindcss';
+
+:root {
+  --night: #0d0b0a;
+  --cream: #f4ede4;
+  --copper: #c8875a;
+}
+
+@theme inline {
+  --color-night: var(--night);
+  --color-cream: var(--cream);
+  --color-copper: var(--copper);
+  --font-serif: var(--font-cormorant);
+  --font-sans: var(--font-manrope);
+}
+
+html {
+  background: var(--night);
+}
+
+body {
+  background: var(--night);
+  color: var(--cream);
+  font-family: var(--font-manrope), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.display {
+  font-family: var(--font-cormorant), serif;
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
